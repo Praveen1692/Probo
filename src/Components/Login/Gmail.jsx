@@ -1,204 +1,113 @@
 import React, { useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  sendSignInLinkToEmail, 
-  isSignInWithEmailLink, 
-  signInWithEmailLink 
-} from 'firebase/auth';
-import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
-import firebaseConfig from '../../Config/FirebaseConfig';
+import { auth } from '../../Config/FirebaseConfig';
+import { sendSignInLinkToEmail, signInWithEmailLink } from 'firebase/auth';
+import toast, { Toaster } from 'react-hot-toast';
 
+const actionCodeSettings = {
+  url: window.location.origin,
+  handleCodeInApp: true,
+};
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-const Gmail = () => {
-
-console.log(firebaseConfig);
-  
+function Gmail() {
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [isValidEmail, setIsValidEmail] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [showOtpInput, setShowOtpInput] = useState(false);
 
-  const handleEmailChange = (e) => {
-    const inputEmail = e.target.value;
-    setEmail(inputEmail);
-  
-    // More comprehensive email validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    
-    if (inputEmail && emailRegex.test(inputEmail)) {
-      setIsValidEmail(true);
-      setError('');
-    } else {
-      setIsValidEmail(false);
-      setError('Please enter a valid email address');
-    }
-  };
-
-  const sendVerificationEmail = async () => {
-    if (!email || !isValidEmail) {
-      setError('Please enter a valid email address');
-      return;
-    }
-  
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
     try {
-      const actionCodeSettings = {
-        url: window.location.origin, // Use current origin dynamically
-        handleCodeInApp: true,
-      };
-  
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      
+      // Store the email in localStorage for later use
       window.localStorage.setItem('emailForSignIn', email);
-      setEmailSent(true);
-      setError('');
-    } catch (error) {
-      console.error('Firebase Error Code:', error.code);
-      console.error('Firebase Error Message:', error.message);
-      console.error('Full Error Object:', error);
+
+      // Send verification email
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+
+      setShowOtpInput(true);
+      console.log("Code sent");
       
-      setError('Failed to send verification email. Please check your configuration.');
-    }
-  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // Handle sign-in with email link (typically in a separate component)
-  const completeSignIn = async () => {
-    try {
-      // Check if the link is a sign-in with email link
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        // Get email from local storage
-        let email = window.localStorage.getItem('emailForSignIn');
-        
-        if (!email) {
-          // Prompt user to provide email if not in local storage
-          email = window.prompt('Please provide your email for confirmation');
-        }
-
-        // Complete sign-in
-        const result = await signInWithEmailLink(auth, email, window.location.href);
-        
-        // Clear the email from storage
-        window.localStorage.removeItem('emailForSignIn');
-
-        // User is signed in
-        console.log('Signed in user:', result.user);
-        // Redirect or update UI as needed
-      }
+      toast.success('Verification code sent to your email!');
     } catch (error) {
-      console.error('Error completing sign-in:', error);
+      toast.error('Error sending verification code');
+      console.error(error);
     }
   };
 
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
 
+    try {
+      const email = window.localStorage.getItem('emailForSignIn');
+      if (!email) {
+        throw new Error('Email not found');
+      }
 
-  
+      // Sign in with email link
+      await signInWithEmailLink(auth, email, window.location.href);
 
+      // Clear email from storage
+      window.localStorage.removeItem('emailForSignIn');
 
+      toast.success('Email verified successfully!');
+      setShowOtpInput(false);
+    } catch (error) {
+      toast.error('Invalid verification code');
+      console.error(error);
+    }
+  };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-blue-600">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-8">
-        <h2 className="text-2xl font-bold mb-4">Verify Your Email a</h2>
-        <p className="text-gray-600 mb-6">
-          {emailSent 
-            ? "Verification link sent! Check your email." 
-            : "Enter your email to receive a verification link"}
-        </p>
-        
-        {!emailSent && (
-          <div className="space-y-4">
-            <div className="relative">
-              <input 
-                type="email" 
-                placeholder="Enter your email" 
-                value={email}
-                onChange={handleEmailChange}
-                className={`w-full px-4 py-2 border rounded ${
-                  email 
-                    ? (isValidEmail 
-                        ? 'border-green-500' 
-                        : 'border-red-500')
-                    : 'border-gray-300'
-                }`}
-              />
-              {email && (
-                <div className="absolute right-3 top-3">
-                  {isValidEmail ? (
-                    <CheckCircle2 color="green" size={20} />
-                  ) : (
-                    <AlertCircle color="red" size={20} />
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {error && (
-              <div className="text-red-500 text-sm flex items-center">
-                <AlertCircle className="mr-2" size={16} />
-                {error}
-              </div>
-            )}
-            
-            <button 
-              onClick={sendVerificationEmail}
-              disabled={!isValidEmail}
-              className={`w-full py-2 px-4 rounded font-bold flex items-center justify-center ${
-                isValidEmail 
-                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <Mail className="mr-2" size={20} />
-              Send Verification Link To 
-            </button>
-          </div>
-        )}
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-center">Email Verification</h2>
 
-        {emailSent && (
-          <div className="text-center">
-            <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
-              <span className="block sm:inline">
-                A verification link has been sent to {email}. 
-                Please check your inbox and click the link to complete sign-in.
-              </span>
-            </div>
-            <p className="mt-4 text-gray-600 text-sm">
-              Didn't receive the email? Check your spam folder or try again.
-            </p>
+      {!showOtpInput ? (
+        <form onSubmit={handleSendOtp} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
           </div>
-        )}
-        
-        <div className="text-center mt-4 text-gray-500 text-sm">
-          Secure authentication powered by{' '}
-          <span className="text-blue-600 font-semibold">Firebase</span>
-        </div>
-      </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Send Verification Code
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div>
+            <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+              Enter Verification Code
+            </label>
+            <input
+              type="text"
+              id="otp"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Verify Code
+          </button>
+        </form>
+      )}
+
+      <Toaster />
     </div>
   );
-};
+}
 
 export default Gmail;
