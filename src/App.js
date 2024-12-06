@@ -1,12 +1,19 @@
 import "./App.css";
-import Gmail from "./Components/Gmail";
-import Login from "./Components/Login";
+
+import HomePage from "./Pages/HomePage";
+import Login from "./Components/Login/Login";
+import Gmail from "./Components/Login/Gmail";
+import { Router, Routes, Route } from "react-router-dom";
 
 function App() {
   return (
     <div>
-      
-   <Gmail />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+
+        <Route path="/login" element={<Login />} />
+        <Route path="/login/gmail" element={<Gmail />} />
+      </Routes>
     </div>
   );
 }
