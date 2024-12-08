@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 
 export function Navbar() {
